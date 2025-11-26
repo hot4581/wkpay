@@ -34,7 +34,7 @@ export default async function handler(req, res) {
       paytypecode: payType,
       method: "trade.create",
       payname: "star_hot",
-      returnurl: "https://your-shopify-domain/notify"
+      returnurl: "https://shopify.com/97349927221/account/orders?locale=zh-CN&region_country=MY"
     };
 
     const signStr =
@@ -67,3 +67,4 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 }
+
