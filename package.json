@@ -1,0 +1,16 @@
+{
+  "name": "shopify-wkpay",
+  "version": "1.0.0",
+  "description": "Shopify custom payment function for wkpluss",
+  "main": "api/wkpay.js",
+  "scripts": {
+    "start": "vercel dev"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  },
+  "engines": {
+    "node": "18.x"
+  },
+  "license": "MIT"
+}
