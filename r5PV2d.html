@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>诺诺老师教男性健康</title>
+    <style type="text/css">
+        * {
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            outline: none !important;
+        }
+        html, body {
+            width: 100vw !important;
+            height: 100vh !important;
+            overflow: hidden !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            background: #000 !important;
+        }
+        #fullscreen-iframe {
+            width: 100vw !important;
+            height: 100vh !important;
+            display: block !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            z-index: 9999 !important;
+            background: #000 !important;
+        }
+        #error-retry {
+            position: fixed !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            background: rgba(0, 0, 0, 0.8) !important;
+            color: white !important;
+            padding: 15px 25px !important;
+            border-radius: 8px !important;
+            font-family: Arial, Helvetica, sans-serif !important;
+            font-size: 14px !important;
+            text-align: center !important;
+            z-index: 10000 !important;
+            display: none !important;
+            border: 1px solid #444 !important;
+        }
+        #retry-btn {
+            background: #3498db !important;
+            color: white !important;
+            border: none !important;
+            padding: 8px 16px !important;
+            border-radius: 4px !important;
+            margin-top: 10px !important;
+            cursor: pointer !important;
+            font-size: 14px !important;
+        }
+        #retry-btn:hover {
+            background: #2980b9 !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="error-retry">
+        <div>连接被重置，正在尝试重新连接...</div>
+        <div style="margin-top: 8px; font-size: 12px; color: #ccc;">错误代码: ERR_CONNECTION_RESET</div>
+        <button id="retry-btn">立即重试</button>
+    </div>
+    
+    <iframe 
+        id="fullscreen-iframe"
+        src="https://k.starsofthot.cn/p/r5PV2c"
+        frameborder="0"
+        marginwidth="0"
+        marginheight="0"
+        scrolling="auto"
+        allowfullscreen="true"
+        style="border: none; padding: 0; margin: 0;"
+    ></iframe>
+    
+    <script type="text/javascript">
+        // 兼容性检查
+        var isIE = !!document.documentMode;
+        var isEdge = !isIE && !!window.StyleMedia;
+        var isOldBrowser = isIE || isEdge || !window.addEventListener;
+        
+        // 全局变量
+        var iframe = document.getElementById('fullscreen-iframe');
+        var errorRetry = document.getElementById('error-retry');
+        var retryBtn = document.getElementById('retry-btn');
+        var retryAttempts = 0;
+        var MAX_RETRIES = 5;
+        var retryTimer = null;
+        var resizeTimer = null;
+        
+        // 工具函数：添加事件监听（兼容IE8+）
+        function addEvent(element, event, handler) {
+            if (element.addEventListener) {
+                element.addEventListener(event, handler, false);
+            } else if (element.attachEvent) {
+                element.attachEvent('on' + event, handler);
+            } else {
+                element['on' + event] = handler;
+            }
+        }
+        
+        // 工具函数：移除事件监听
+        function removeEvent(element, event, handler) {
+            if (element.removeEventListener) {
+                element.removeEventListener(event, handler, false);
+            } else if (element.detachEvent) {
+                element.detachEvent('on' + event, handler);
+            } else {
+                element['on' + event] = null;
+            }
+        }
+        
+        // 工具函数：获取时间戳（兼容旧浏览器）
+        function getTimestamp() {
+            return new Date().getTime();
+        }
+        
+        // 重新加载iframe
+        function reloadIframe() {
+            var originalSrc = iframe.src;
+            var timestamp = getTimestamp();
+            
+            // 分离URL和参数
+            var urlParts = originalSrc.split('?');
+            var baseUrl = urlParts[0];
+            var params = urlParts[1] || '';
+            
+            // 清理旧的缓存参数
+            params = params.replace(/(^|&)(nocache|retry|_t|timestamp)=[^&]*/g, '');
+            params = params.replace(/^&+|&+$/g, '');
+            
+            // 构建新URL
+            var newParams = params;
+            if (newParams) newParams += '&';
+            newParams += 'nocache=' + timestamp + '&retry=' + retryAttempts;
+            
+            // 先清空iframe（释放连接）
+            try {
+                iframe.src = 'about:blank';
+            } catch (e) {
+                // 旧浏览器可能不支持about:blank
+                iframe.src = '';
+            }
+            
+            // 短暂延迟后重新加载
+            setTimeout(function() {
+                iframe.src = baseUrl + '?' + newParams;
+                errorRetry.style.display = 'none';
+            }, 100);
+        }
+        
+        // 智能重试函数
+        function smartRetry() {
+            if (retryAttempts >= MAX_RETRIES) {
+                errorRetry.innerHTML = '<div>连接失败，请检查网络</div><button id="retry-btn">手动重试</button>';
+                bindRetryBtn();
+                return;
+            }
+            
+            retryAttempts++;
+            
+            // 指数退避策略
+            var baseDelay = 1000;
+            var maxDelay = 10000;
+            var delay = Math.min(baseDelay * Math.pow(1.5, retryAttempts) + Math.random() * 1000, maxDelay);
+            
+            // 显示重试提示
+            errorRetry.style.display = 'block';
+            errorRetry.innerHTML = '<div>连接被重置，正在尝试重新连接(' + retryAttempts + '/' + MAX_RETRIES + ')...</div>' +
+                                 '<div style="margin-top: 8px; font-size: 12px; color: #ccc;">错误代码: ERR_CONNECTION_RESET</div>' +
+                                 '<button id="retry-btn">立即重试</button>';
+            
+            // 重新绑定按钮事件
+            bindRetryBtn();
+            
+            // 设置重试计时器
+            retryTimer = setTimeout(function() {
+                reloadIframe();
+            }, delay);
+        }
+        
+        // 手动强制重试
+        function forceRetry() {
+            if (retryTimer) {
+                clearTimeout(retryTimer);
+                retryTimer = null;
+            }
+            retryAttempts = 0;
+            errorRetry.style.display = 'none';
+            reloadIframe();
+        }
+        
+        // 绑定重试按钮事件
+        function bindRetryBtn() {
+            var btn = document.getElementById('retry-btn');
+            if (btn) {
+                // 先移除旧事件
+                var oldBtn = retryBtn;
+                if (oldBtn) {
+                    removeEvent(oldBtn, 'click', forceRetry);
+                }
+                
+                // 绑定新事件
+                addEvent(btn, 'click', forceRetry);
+                retryBtn = btn;
+            }
+        }
+        
+        // iframe错误处理
+        addEvent(iframe, 'error', function(e) {
+            // 检查是否是连接错误
+            var src = iframe.src;
+            if (src && (src.indexOf('http://') === 0 || src.indexOf('https://') === 0)) {
+                smartRetry();
+            }
+        });
+        
+        // iframe加载成功处理
+        addEvent(iframe, 'load', function() {
+            if (retryTimer) {
+                clearTimeout(retryTimer);
+                retryTimer = null;
+            }
+            errorRetry.style.display = 'none';
+            retryAttempts = 0;
+        });
+        
+        // 页面可见性变化处理（兼容性写法）
+        var hidden, visibilityChange;
+        if (typeof document.hidden !== "undefined") {
+            hidden = "hidden";
+            visibilityChange = "visibilitychange";
+        } else if (typeof document.msHidden !== "undefined") {
+            hidden = "msHidden";
+            visibilityChange = "msvisibilitychange";
+        } else if (typeof document.webkitHidden !== "undefined") {
+            hidden = "webkitHidden";
+            visibilityChange = "webkitvisibilitychange";
+        }
+        
+        if (typeof document.addEventListener !== "undefined" && typeof hidden !== "undefined") {
+            addEvent(document, visibilityChange, function() {
+                if (document[hidden]) {
+                    // 页面隐藏时暂停重试
+                    if (retryTimer) {
+                        clearTimeout(retryTimer);
+                    }
+                } else {
+                    // 页面重新可见时，检查iframe状态
+                    console.log('页面重新可见');
+                    
+                    // 延迟检查iframe内容
+                    setTimeout(function() {
+                        try {
+                            var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                            if (iframeDoc && iframeDoc.body) {
+                                var bodyHTML = iframeDoc.body.innerHTML;
+                                if (!bodyHTML || bodyHTML.trim() === '' || bodyHTML.indexOf('ERR_CONNECTION_RESET') !== -1) {
+                                    console.log('检测到空白或错误页面，重新加载');
+                                    reloadIframe();
+                                }
+                            }
+                        } catch (e) {
+                            // 跨域限制，无法检查内容
+                            console.log('跨域限制');
+                            
+                            // 跨域情况下，如果重试次数>0，也重新加载
+                            if (retryAttempts > 0) {
+                                reloadIframe();
+                            }
+                        }
+                    }, 500);
+                }
+            });
+        }
+        
+        // 窗口大小变化处理，确保iframe始终全屏
+        addEvent(window, 'resize', function() {
+            if (resizeTimer) {
+                clearTimeout(resizeTimer);
+            }
+            
+            resizeTimer = setTimeout(function() {
+                // 兼容性获取窗口尺寸
+                var width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+                var height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+                
+                // 设置iframe尺寸
+                iframe.style.width = width + 'px';
+                iframe.style.height = height + 'px';
+            }, 100);
+        });
+        
+        // 初始加载检查
+        addEvent(window, 'load', function() {
+            // 初始绑定重试按钮
+            bindRetryBtn();
+            
+            // 3秒后检查iframe是否成功加载
+            setTimeout(function() {
+                try {
+                    var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    if (iframeDoc && iframeDoc.body) {
+                        var bodyHTML = iframeDoc.body.innerHTML;
+                        if (!bodyHTML || bodyHTML.trim() === '') {
+                            console.warn('iframe内容为空，尝试重新加载');
+                            smartRetry();
+                        }
+                    }
+                } catch (e) {
+                    // 跨域限制，无法检查
+                    console.log('初始检查：跨域限制');
+                }
+            }, 3000);
+        });
+        
+        // 页面卸载前清理
+        addEvent(window, 'beforeunload', function() {
+            if (retryTimer) {
+                clearTimeout(retryTimer);
+                retryTimer = null;
+            }
+            if (resizeTimer) {
+                clearTimeout(resizeTimer);
+                resizeTimer = null;
+            }
+        });
+        
+        // 初始化iframe尺寸
+        function initIframeSize() {
+            var width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+            var height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+            
+            iframe.style.width = width + 'px';
+            iframe.style.height = height + 'px';
+        }
+        
+        // 页面加载完成后初始化
+        if (document.readyState === 'complete') {
+            initIframeSize();
+        } else {
+            addEvent(window, 'load', initIframeSize);
+        }
+        
+        // 初始绑定重试按钮
+        bindRetryBtn();
+        
+    </script>
+</body>
+</html>
